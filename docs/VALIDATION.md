@@ -2,7 +2,7 @@
 
 ## Observed locally
 
-- Windows AMD64, Python 3.12.14: 75 unit/integration/headless tests pass, covering
+- Windows AMD64, Python 3.12.14: 76 unit/integration/headless tests pass, covering
   models, configuration, adapters, store, reports, feeds, response, scanner, history,
   API, CLI, and Textual UI. Windows loopback/file-handle tests required normal host
   execution because the development sandbox blocked socketpair/rename operations.
@@ -39,7 +39,10 @@ A separate reviewer identified false vulnerability coverage from non-vulnerabili
 Trivy classes and false disappearance when a target alias was reused. Regression
 tests now guard both. Review also prompted resolved network-target rejection and
 explicit Windows DACL/shared-writer limits for artifact holding. This was focused
-engineering review, not a comprehensive external audit or penetration test.
+  engineering review, not a comprehensive external audit or penetration test.
+
+Initial remote CI rejected a YAML command containing an unquoted trailing colon.
+The command is now quoted and a distribution regression test parses workflow YAML.
 
 ## Limits and pending evidence
 
