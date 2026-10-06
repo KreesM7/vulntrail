@@ -36,6 +36,8 @@ class AdapterTests(unittest.TestCase):
 
     def test_wrong_shapes_and_limits_fail(self):
         for data in ({}, {"SchemaVersion": 1}, {"SchemaVersion": 2, "Results": "bad"},
+                     {"SchemaVersion": 2, "Results": {}},
+                     {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": {}}]},
                      {"SchemaVersion": 2, "Results": [{"Target": "x", "Vulnerabilities": [{}]}]}):
             with self.subTest(data=data), self.assertRaises(ValueError):
                 parse_report(data, "trivy", "sample")

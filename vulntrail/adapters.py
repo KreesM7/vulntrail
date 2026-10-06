@@ -62,7 +62,7 @@ def parse_report(payload: dict, backend: str, target: str, offline=True,
     if backend == "trivy":
         if type(payload.get("SchemaVersion")) is not int or payload["SchemaVersion"] != 2:
             raise ValueError("Only Trivy SchemaVersion 2 is supported")
-        results = array(payload.get("Results") or [], "Results")
+        results = array([] if payload.get("Results") is None else payload["Results"], "Results")
         for result in results:
             obj(result, "result")
             location = string(result.get("Target"), "target", required=True)
@@ -72,7 +72,7 @@ def parse_report(payload: dict, backend: str, target: str, offline=True,
                 osdata = obj(payload.get("Metadata", {}).get("OS", {}), "OS")
                 ecosystem += ":" + string(osdata.get("Family"), "OS family") + ":" + string(osdata.get("Name"), "OS name")
             vulnerabilities = result.get("Vulnerabilities")
-            for item in array(vulnerabilities or [], "Vulnerabilities"):
+            for item in array([] if vulnerabilities is None else vulnerabilities, "Vulnerabilities"):
                 obj(item, "vulnerability")
                 severity = string(item.get("Severity"), "severity").upper() or "UNKNOWN"
                 if severity not in SEVERITIES:
@@ -99,7 +99,8 @@ def parse_report(payload: dict, backend: str, target: str, offline=True,
             obj(match, "match")
             artifact = obj(match.get("artifact"), "artifact")
             vulnerability = obj(match.get("vulnerability"), "vulnerability")
-            locations = array(artifact.get("locations") or [], "locations")
+            locations_value = artifact.get("locations")
+            locations = array([] if locations_value is None else locations_value, "locations")
             location = "|".join(string(obj(loc, "location").get("path"), "path") for loc in locations)
             ecosystem = string(artifact.get("type"), "package type") or "unknown"
             if ecosystem in ("deb", "rpm", "apk"):
