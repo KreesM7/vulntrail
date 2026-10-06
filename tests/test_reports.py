@@ -18,12 +18,25 @@ class Tags(HTMLParser):
 class ReportTests(unittest.TestCase):
     def setUp(self):
         self.run = Run(
-            '<img src=x onerror="alert(1)">', "trivy",
-            [Finding("CVE-2025-0001", "[demo](javascript:evil)|new\nrow", "1", "pypi", "HIGH",
-                     fixed_version="2", description="<script>alert(1)</script>",
-                     location="a|b", urls=['https://example.test/\" onmouseover=\"evil'])],
-            coverage=["requirements.txt"], warnings=["<svg onload=evil>"],
-            data_updated_at="2026-01-01", source_digest="abc",
+            '<img src=x onerror="alert(1)">',
+            "trivy",
+            [
+                Finding(
+                    "CVE-2025-0001",
+                    "[demo](javascript:evil)|new\nrow",
+                    "1",
+                    "pypi",
+                    "HIGH",
+                    fixed_version="2",
+                    description="<script>alert(1)</script>",
+                    location="a|b",
+                    urls=['https://example.test/" onmouseover="evil'],
+                )
+            ],
+            coverage=["requirements.txt"],
+            warnings=["<svg onload=evil>"],
+            data_updated_at="2026-01-01",
+            source_digest="abc",
         )
 
     def test_json_preserves_evidence_and_derived_priority(self):

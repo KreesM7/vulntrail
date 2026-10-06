@@ -8,6 +8,7 @@ Windows requires a private ACL-protected project and holding directory. Owner
 checks do not verify DACL write grants. Shared writable roots are unsupported;
 writers with project access are outside the integrity guarantee.
 """
+
 from contextlib import contextmanager, ExitStack
 import ctypes
 from ctypes import wintypes
@@ -34,15 +35,46 @@ def _winapi():
     kernel.GetCurrentProcess.restype = wintypes.HANDLE
     kernel.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel.LocalFree.argtypes = [pointer]
-    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
-                                  pointer, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        pointer,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
     kernel.CreateFileW.restype = wintypes.HANDLE
-    kernel.GetFileInformationByHandleEx.argtypes = [wintypes.HANDLE, ctypes.c_int, pointer, wintypes.DWORD]
-    kernel.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, pointer, wintypes.DWORD]
+    kernel.GetFileInformationByHandleEx.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        pointer,
+        wintypes.DWORD,
+    ]
+    kernel.SetFileInformationByHandle.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        pointer,
+        wintypes.DWORD,
+    ]
     security.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, pointer]
-    security.GetTokenInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, pointer, wintypes.DWORD, pointer]
-    security.GetNamedSecurityInfoW.argtypes = [wintypes.LPWSTR, ctypes.c_int, wintypes.DWORD,
-                                             pointer, pointer, pointer, pointer, pointer]
+    security.GetTokenInformation.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        pointer,
+        wintypes.DWORD,
+        pointer,
+    ]
+    security.GetNamedSecurityInfoW.argtypes = [
+        wintypes.LPWSTR,
+        ctypes.c_int,
+        wintypes.DWORD,
+        pointer,
+        pointer,
+        pointer,
+        pointer,
+        pointer,
+    ]
     security.ConvertSidToStringSidW.argtypes = [pointer, pointer]
     return kernel, security
 
@@ -81,8 +113,9 @@ def _owner(path: Path) -> str:
         return str(path.lstat().st_uid)
     kernel, security = _winapi()
     owner, descriptor = ctypes.c_void_p(), ctypes.c_void_p()
-    code = security.GetNamedSecurityInfoW(str(path), 1, 1, ctypes.byref(owner),
-                                          None, None, None, ctypes.byref(descriptor))
+    code = security.GetNamedSecurityInfoW(
+        str(path), 1, 1, ctypes.byref(owner), None, None, None, ctypes.byref(descriptor)
+    )
     if code:
         raise ctypes.WinError(code)
     try:
@@ -100,7 +133,9 @@ def _absolute(path: Path) -> Path:
     path = Path(path)
     if ".." in path.parts:
         raise ValueError("Parent traversal is forbidden")
-    if os.name == "nt" and (str(path).startswith("\\\\") or any(":" in part for part in path.parts[1:])):
+    if os.name == "nt" and (
+        str(path).startswith("\\\\") or any(":" in part for part in path.parts[1:])
+    ):
         raise ValueError("Network paths and alternate data streams are forbidden")
     return Path(os.path.abspath(path))
 
@@ -145,8 +180,11 @@ def _locked_dirs(root: Path, *directories: Path):
                 stack.callback(_winapi()[0].CloseHandle, handle)
             else:
                 flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-                descriptor = os.open(str(path) if path == path.parent else path.name, flags,
-                                     dir_fd=descriptors.get(path.parent))
+                descriptor = os.open(
+                    str(path) if path == path.parent else path.name,
+                    flags,
+                    dir_fd=descriptors.get(path.parent),
+                )
                 descriptors[path] = descriptor
                 stack.callback(os.close, descriptor)
             if path == root or root in path.parents:
@@ -161,6 +199,7 @@ def _file(path: Path, descriptors: dict, movable: bool = False):
         raise ValueError("Only regular files may be used in project responses")
     if os.name == "nt":
         import msvcrt
+
         handle = _win_open(path, 0x80000000 | (0x10000 if movable else 0), 1)
         try:
             descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
@@ -168,7 +207,9 @@ def _file(path: Path, descriptors: dict, movable: bool = False):
             _winapi()[0].CloseHandle(handle)
             raise
     else:
-        descriptor = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptors[path.parent])
+        descriptor = os.open(
+            path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptors[path.parent]
+        )
     with os.fdopen(descriptor, "rb") as stream:
         info = os.fstat(stream.fileno())
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
@@ -200,8 +241,12 @@ def _move(stream, source: Path, destination: Path, descriptors: dict):
         import msvcrt
 
         class RenameInfo(ctypes.Structure):
-            _fields_ = [("replace", wintypes.DWORD), ("root", wintypes.HANDLE),
-                        ("length", wintypes.DWORD), ("name", wintypes.WCHAR * 1)]
+            _fields_ = [
+                ("replace", wintypes.DWORD),
+                ("root", wintypes.HANDLE),
+                ("length", wintypes.DWORD),
+                ("name", wintypes.WCHAR * 1),
+            ]
 
         encoded = str(destination).encode("utf-16-le")
         buffer = ctypes.create_string_buffer(RenameInfo.name.offset + len(encoded) + 2)
@@ -218,8 +263,13 @@ def _move(stream, source: Path, destination: Path, descriptors: dict):
         current = os.stat(source.name, dir_fd=source_fd, follow_symlinks=False)
         if (current.st_dev, current.st_ino) != (identity.st_dev, identity.st_ino):
             raise ValueError("Source identity changed")
-        os.link(source.name, destination.name, src_dir_fd=source_fd,
-                dst_dir_fd=destination_fd, follow_symlinks=False)
+        os.link(
+            source.name,
+            destination.name,
+            src_dir_fd=source_fd,
+            dst_dir_fd=destination_fd,
+            follow_symlinks=False,
+        )
         linked = os.stat(destination.name, dir_fd=destination_fd, follow_symlinks=False)
         if (linked.st_dev, linked.st_ino) != (identity.st_dev, identity.st_ino):
             os.unlink(destination.name, dir_fd=destination_fd)
@@ -238,7 +288,9 @@ def _project_file(root: Path, artifact: Path) -> Path:
     artifact = Path(artifact)
     artifact = _absolute(artifact if artifact.is_absolute() else root / artifact)
     if root not in artifact.parents or ".vulntrail-hold" in artifact.relative_to(root).parts:
-        raise ValueError("Artifact must be outside holding metadata and strictly below the project root")
+        raise ValueError(
+            "Artifact must be outside holding metadata and strictly below the project root"
+        )
     return artifact
 
 
@@ -250,7 +302,12 @@ def _approval(value: str) -> str:
 
 def _identity(root: Path) -> dict:
     info = root.stat()
-    return {"root": str(root), "owner": _current_owner(), "device": info.st_dev, "inode": info.st_ino}
+    return {
+        "root": str(root),
+        "owner": _current_owner(),
+        "device": info.st_dev,
+        "inode": info.st_ino,
+    }
 
 
 def _mkdir(path: Path, descriptors: dict):
@@ -262,8 +319,12 @@ def _mkdir(path: Path, descriptors: dict):
 
 def _create(path: Path, descriptors: dict):
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-    return os.open(path if os.name == "nt" else path.name, flags, mode=0o600,
-                   **({} if os.name == "nt" else {"dir_fd": descriptors[path.parent]}))
+    return os.open(
+        path if os.name == "nt" else path.name,
+        flags,
+        mode=0o600,
+        **({} if os.name == "nt" else {"dir_fd": descriptors[path.parent]}),
+    )
 
 
 def _unlink(path: Path, descriptors: dict):
@@ -356,10 +417,15 @@ def hold_artifact(root: Path, artifact: Path, approved_sha256: str, store: Store
                     _mkdir(stage, holding_descriptors)
                     with _locked_dirs(root, stage) as stage_descriptors:
                         combined = {**holding_descriptors, **stage_descriptors}
-                        record = {"root_identity": _identity(root), "hold_id": hold_id,
-                                  "relative_path": artifact.relative_to(root).as_posix(),
-                                  "sha256": approved_sha256, "status": "prepared",
-                                  "created_at": utc_now(), "restored_at": None}
+                        record = {
+                            "root_identity": _identity(root),
+                            "hold_id": hold_id,
+                            "relative_path": artifact.relative_to(root).as_posix(),
+                            "sha256": approved_sha256,
+                            "status": "prepared",
+                            "created_at": utc_now(),
+                            "restored_at": None,
+                        }
                         manifest = stage / "manifest.json"
                         _write_json(manifest, record, combined, initial=True)
                         store.audit("artifact_hold_requested", _summary(record))
@@ -384,10 +450,15 @@ def restore_artifact(root: Path, hold_id: str, approved_sha256: str, store: Stor
                     combined = {**holding_descriptors, **stage_descriptors}
                     manifest = stage / "manifest.json"
                     record = _read_json(manifest, combined)
-                    if (record.get("root_identity") != _identity(root) or record.get("hold_id") != hold_id
-                            or record.get("sha256") != approved_sha256
-                            or record.get("status") not in ("held", "prepared")):
-                        raise ValueError("Holding record differs from the selected project and approval")
+                    if (
+                        record.get("root_identity") != _identity(root)
+                        or record.get("hold_id") != hold_id
+                        or record.get("sha256") != approved_sha256
+                        or record.get("status") not in ("held", "prepared")
+                    ):
+                        raise ValueError(
+                            "Holding record differs from the selected project and approval"
+                        )
                     if not isinstance(record.get("relative_path"), str):
                         raise ValueError("Invalid restoration path")
                     destination = _project_file(root, Path(record["relative_path"]))
@@ -412,23 +483,30 @@ def plan_response(run: Run) -> dict:
             f"Review the publisher's advisory and dependency constraints, then consider upgrading "
             f"{finding.package} from {finding.version} to a supported release containing the "
             f"reported fix ({finding.fixed_version})."
-            if finding.fixed_version else
-            f"Review the publisher's advisory for {finding.package} {finding.version}; "
+            if finding.fixed_version
+            else f"Review the publisher's advisory for {finding.package} {finding.version}; "
             "the imported evidence supplies no fixed version. Assess a supported update or "
             "temporary project isolation with its owner."
         )
-        actions.append({
-            "fingerprint": finding.fingerprint, "vulnerability_id": finding.vulnerability_id,
-            "package": finding.package, "priority": finding.priority, "advice": advice,
-            "verification": "Verify the upgrade with the project's tests, record the deployed "
-                            "version, and rescan with comparable coverage and current advisory data.",
-            "references": list(finding.urls),
-        })
+        actions.append(
+            {
+                "fingerprint": finding.fingerprint,
+                "vulnerability_id": finding.vulnerability_id,
+                "package": finding.package,
+                "priority": finding.priority,
+                "advice": advice,
+                "verification": "Verify the upgrade with the project's tests, record the deployed "
+                "version, and rescan with comparable coverage and current advisory data.",
+                "references": list(finding.urls),
+            }
+        )
     return {
-        "run_id": run.id, "target": run.target, "actions": actions,
+        "run_id": run.id,
+        "target": run.target,
+        "actions": actions,
         "limitations": f"This {run.status} scan does not establish exploitability or security. "
-                       "Review coverage, advisory-data freshness and findings with the project owner. "
-                       "Holding a project file can break dependent applications; restoration requires "
-                       "the same individually approved digest.",
+        "Review coverage, advisory-data freshness and findings with the project owner. "
+        "Holding a project file can break dependent applications; restoration requires "
+        "the same individually approved digest.",
         "warnings": list(run.warnings),
     }

@@ -1,0 +1,15 @@
+.git
+.venv
+.vulntrail
+.vulntrail-hold
+config.yaml
+tests
+tasks
+dist
+build
+__pycache__
+*.db
+*.sqlite3
+*.key
+*.pem
+.env*

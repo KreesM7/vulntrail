@@ -1,4 +1,5 @@
 """Transactional local evidence snapshots; each operation owns its connection."""
+
 from contextlib import contextmanager
 from collections import Counter
 import json
@@ -101,13 +102,17 @@ class Store:
                 )
                 self._audit(connection, "run_saved", {"run_id": snapshot.id})
         except sqlite3.IntegrityError as error:
-            raise ValueError("Run identifier already exists; snapshots cannot be overwritten") from error
+            raise ValueError(
+                "Run identifier already exists; snapshots cannot be overwritten"
+            ) from error
         return Run.from_dict(json.loads(payload))
 
     def get_run(self, id: str) -> Run:
         text(id, "run identifier", required=True)
         with self._connection() as connection:
-            row = connection.execute("SELECT snapshot_json FROM runs WHERE id = ?", (id,)).fetchone()
+            row = connection.execute(
+                "SELECT snapshot_json FROM runs WHERE id = ?", (id,)
+            ).fetchone()
         if row is None:
             raise KeyError(id)
         return Run.from_dict(json.loads(row[0]))
@@ -141,9 +146,14 @@ class Store:
                 summary = json.loads(row[0])
                 findings = summary.pop("findings")
                 summary["finding_count"] = len(findings)
-                summary["severity_counts"] = dict(Counter(finding["severity"] for finding in findings))
+                summary["severity_counts"] = dict(
+                    Counter(finding["severity"] for finding in findings)
+                )
                 truncated = False
-                for key, count_key in (("coverage", "coverage_count"), ("warnings", "warning_count")):
+                for key, count_key in (
+                    ("coverage", "coverage_count"),
+                    ("warnings", "warning_count"),
+                ):
                     values = summary[key]
                     summary[count_key] = len(values)
                     truncated |= len(values) > 10 or any(len(value) > 512 for value in values)
@@ -153,8 +163,9 @@ class Store:
                 truncated |= len(provenance) > 4 or any(
                     len(value) > 256 for item in provenance for value in item.values()
                 )
-                summary["enrichment"] = [{key: value[:256] for key, value in item.items()}
-                                         for item in provenance[-4:]]
+                summary["enrichment"] = [
+                    {key: value[:256] for key, value in item.items()} for item in provenance[-4:]
+                ]
                 summary["summary_truncated"] = bool(truncated)
                 summaries.append(summary)
         return summaries

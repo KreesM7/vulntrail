@@ -4,6 +4,7 @@ from unittest.mock import patch
 from pathlib import Path
 from vulntrail.config import Settings, load_settings
 
+
 class ConfigTests(unittest.TestCase):
     def test_relative_paths_and_offline_default(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as root:
@@ -15,9 +16,12 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(settings.state_dir, Path(root) / "state")
 
     def test_invalid_settings_fail_closed(self):
-        for fields in ({"offline": "false"}, {"timeout_seconds": 0},
-                       {"targets": {"app": "https://example.com"}},
-                       {"trivy_path": "scan.cmd"}):
+        for fields in (
+            {"offline": "false"},
+            {"timeout_seconds": 0},
+            {"targets": {"app": "https://example.com"}},
+            {"trivy_path": "scan.cmd"},
+        ):
             with self.subTest(fields=fields), self.assertRaises(ValueError):
                 Settings(**fields)
 

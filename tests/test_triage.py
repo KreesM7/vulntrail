@@ -2,6 +2,7 @@ import unittest
 from vulntrail.models import Run, Finding
 from vulntrail.triage import compare_runs
 
+
 class HistoryTests(unittest.TestCase):
     def test_missing_in_partial_scan_is_unresolved(self):
         finding = Finding("CVE-2024-0001", "demo", "1", "pypi", "HIGH")
@@ -14,8 +15,16 @@ class HistoryTests(unittest.TestCase):
 
     def test_complete_matching_coverage_can_describe_absence_not_resolution(self):
         finding = Finding("CVE-2024-0001", "demo", "1", "pypi", "HIGH")
-        before = Run("app", "trivy", [finding], coverage=["pip:requirements.txt"], target_identity="fixture:app")
-        after = Run("app", "trivy", coverage=["pip:requirements.txt"], target_identity="fixture:app")
+        before = Run(
+            "app",
+            "trivy",
+            [finding],
+            coverage=["pip:requirements.txt"],
+            target_identity="fixture:app",
+        )
+        after = Run(
+            "app", "trivy", coverage=["pip:requirements.txt"], target_identity="fixture:app"
+        )
         diff = compare_runs(before, after)
         self.assertTrue(diff["comparable"])
         self.assertEqual(len(diff["no_longer_observed"]), 1)

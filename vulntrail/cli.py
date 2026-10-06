@@ -1,4 +1,5 @@
 """Local operations: scans, immutable evidence, reports, and explicit artifact holding."""
+
 import argparse
 import getpass
 import json
@@ -22,18 +23,31 @@ from .triage import compare_runs
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="vulntrail", description="Local vulnerability evidence and history")
-    parser.add_argument("--config", type=Path, help="YAML configuration (default: config.yaml if present)")
+    parser = argparse.ArgumentParser(
+        prog="vulntrail", description="Local vulnerability evidence and history"
+    )
+    parser.add_argument(
+        "--config", type=Path, help="YAML configuration (default: config.yaml if present)"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="Create a configuration without overwriting")
     init.add_argument("file", type=Path, nargs="?", default=Path("config.yaml"))
     init.add_argument("--target", action="append", default=[], metavar="NAME=PATH")
     for name in ("scan", "watch"):
-        command = sub.add_parser(name, help="Scan a configured local target" if name == "scan" else "Repeat scans until interrupted or count reached")
+        command = sub.add_parser(
+            name,
+            help="Scan a configured local target"
+            if name == "scan"
+            else "Repeat scans until interrupted or count reached",
+        )
         command.add_argument("target")
-        command.add_argument("--fail-on", choices=SEVERITIES, help="Exit 1 if this severity or higher is observed")
+        command.add_argument(
+            "--fail-on", choices=SEVERITIES, help="Exit 1 if this severity or higher is observed"
+        )
         if name == "watch":
-            command.add_argument("--count", type=int, default=0, help="Number of scans; 0 means until interrupted")
+            command.add_argument(
+                "--count", type=int, default=0, help="Number of scans; 0 means until interrupted"
+            )
             command.add_argument("--interval", type=float, help="Seconds between completed scans")
     imported = sub.add_parser("import", help="Import a bounded local Trivy or Grype JSON report")
     imported.add_argument("report", type=Path)
@@ -44,7 +58,9 @@ def _parser() -> argparse.ArgumentParser:
     runs.add_argument("--limit", type=int, default=20)
     runs.add_argument("--offset", type=int, default=0)
     for name in ("show", "response"):
-        command = sub.add_parser(name, help="Show evidence" if name == "show" else "Plan human-reviewed remediation")
+        command = sub.add_parser(
+            name, help="Show evidence" if name == "show" else "Plan human-reviewed remediation"
+        )
         command.add_argument("id")
     diff = sub.add_parser("diff", help="Compare findings with honest coverage semantics")
     diff.add_argument("before")
@@ -52,7 +68,9 @@ def _parser() -> argparse.ArgumentParser:
     report = sub.add_parser("report", help="Export JSON, Markdown, or escaped HTML")
     report.add_argument("id")
     report.add_argument("--format", choices=("json", "md", "html"), default="json")
-    report.add_argument("--output", type=Path, help="Write a new file; existing files are never replaced")
+    report.add_argument(
+        "--output", type=Path, help="Write a new file; existing files are never replaced"
+    )
     serve = sub.add_parser("serve", help="Start the local API and dashboard (one process)")
     serve.add_argument("--host", default="127.0.0.1", help="Literal loopback address only")
     serve.add_argument("--port", type=int, default=8765)
@@ -63,11 +81,18 @@ def _parser() -> argparse.ArgumentParser:
     enrich.add_argument("--kev", type=Path)
     enrich.add_argument("--epss", type=Path)
     for name in ("hold", "restore"):
-        command = sub.add_parser(name, help="Explicitly hold a project artifact" if name == "hold" else "Restore a held project artifact")
+        command = sub.add_parser(
+            name,
+            help="Explicitly hold a project artifact"
+            if name == "hold"
+            else "Restore a held project artifact",
+        )
         command.add_argument("root", type=Path, help="User-selected project root")
         command.add_argument("artifact" if name == "hold" else "hold_id")
         command.add_argument("--sha256", required=True, help="Exact approved SHA-256 digest")
-        command.add_argument("--confirm", action="store_true", help="Approve this exact artifact move")
+        command.add_argument(
+            "--confirm", action="store_true", help="Approve this exact artifact move"
+        )
     return parser
 
 
@@ -78,8 +103,9 @@ def _emit(value):
 def _exit_for_run(run, fail_on):
     if run.status != "complete":
         return 2
-    if fail_on and any(SEVERITIES.index(f.severity) >= SEVERITIES.index(fail_on)
-                       for f in run.findings):
+    if fail_on and any(
+        SEVERITIES.index(f.severity) >= SEVERITIES.index(fail_on) for f in run.findings
+    ):
         return 1
     return 0
 
@@ -95,10 +121,18 @@ def _init(args):
         if not name or not path or name in targets:
             raise ValueError("Target names and paths must be nonempty and unique")
         targets[name] = str(Path(path).resolve())
-    value = {"state_dir": "./.vulntrail", "cache_dir": "./.vulntrail/cache",
-             "targets": targets, "offline": True, "interval_seconds": 3600,
-             "timeout_seconds": 300, "max_data_age_days": 7, "trivy_path": "trivy"}
+    value = {
+        "state_dir": "./.vulntrail",
+        "cache_dir": "./.vulntrail/cache",
+        "targets": targets,
+        "offline": True,
+        "interval_seconds": 3600,
+        "timeout_seconds": 300,
+        "max_data_age_days": 7,
+        "trivy_path": "trivy",
+    }
     from .config import Settings
+
     Settings(**value)
     args.file.parent.mkdir(parents=True, exist_ok=True)
     with args.file.open("x", encoding="utf-8") as handle:
@@ -115,15 +149,27 @@ def _doctor(settings):
     targets = [{"name": name, "exists": path.is_dir()} for name, path in settings.targets.items()]
     cache_exists = settings.cache_dir.is_dir()
     metadata = settings.cache_dir / "db" / "metadata.json"
-    checks = {"backend_available": bool(binary), "configured_targets": targets,
-              "cache_exists": cache_exists, "database_metadata_exists": metadata.is_file(),
-              "offline": settings.offline,
-              "notes": ["Provision Trivy and its vulnerability database separately.",
-                        "Offline backend flags do not enforce operating-system network isolation.",
-                        "Database age and coverage are reported with each supported scan."]}
+    checks = {
+        "backend_available": bool(binary),
+        "configured_targets": targets,
+        "cache_exists": cache_exists,
+        "database_metadata_exists": metadata.is_file(),
+        "offline": settings.offline,
+        "notes": [
+            "Provision Trivy and its vulnerability database separately.",
+            "Offline backend flags do not enforce operating-system network isolation.",
+            "Database age and coverage are reported with each supported scan.",
+        ],
+    }
     _emit(checks)
-    return 0 if binary and targets and all(t["exists"] for t in targets) and (
-        not settings.offline or metadata.is_file()) else 2
+    return (
+        0
+        if binary
+        and targets
+        and all(t["exists"] for t in targets)
+        and (not settings.offline or metadata.is_file())
+        else 2
+    )
 
 
 def main(argv=None) -> int:
@@ -142,22 +188,42 @@ def main(argv=None) -> int:
                 token = getpass.getpass("Local access token (at least 32 characters): ")
             from .api import create_app
             import uvicorn
+
             app = create_app(settings, token)
-            print(f"VulnTrail dashboard: http://{'[::1]' if args.host == '::1' else args.host}:{args.port}", file=sys.stderr)
-            uvicorn.run(app, host=args.host, port=args.port, workers=1,
-                        proxy_headers=False, access_log=False, log_level="warning")
+            print(
+                f"VulnTrail dashboard: http://{'[::1]' if args.host == '::1' else args.host}:{args.port}",
+                file=sys.stderr,
+            )
+            uvicorn.run(
+                app,
+                host=args.host,
+                port=args.port,
+                workers=1,
+                proxy_headers=False,
+                access_log=False,
+                log_level="warning",
+            )
             return 0
         store = Store(settings.state_dir / "evidence.sqlite3")
         if args.command == "tui":
             from .tui import VulnTrailApp
+
             VulnTrailApp(settings, store).run()
             return 0
         if args.command in {"scan", "watch"}:
             if args.target not in settings.targets:
                 raise ValueError("Choose a configured target")
             count = args.count if args.command == "watch" else 1
-            interval = (args.interval if args.interval is not None else settings.interval_seconds) if args.command == "watch" else 0
-            if count < 0 or count > 100000 or (args.command == "watch" and not 1 <= interval <= 86400):
+            interval = (
+                (args.interval if args.interval is not None else settings.interval_seconds)
+                if args.command == "watch"
+                else 0
+            )
+            if (
+                count < 0
+                or count > 100000
+                or (args.command == "watch" and not 1 <= interval <= 86400)
+            ):
                 raise ValueError("Watch count must be 0–100000 and interval 1–86400 seconds")
             completed, code = 0, 0
             while count == 0 or completed < count:
@@ -171,8 +237,13 @@ def main(argv=None) -> int:
             return code
         if args.command == "import":
             raw = read_json(args.report, settings.max_report_bytes)
-            run = parse_report(raw, args.backend, args.target, offline=settings.offline,
-                               max_findings=settings.max_findings)
+            run = parse_report(
+                raw,
+                args.backend,
+                args.target,
+                offline=settings.offline,
+                max_findings=settings.max_findings,
+            )
             store.save_run(run, raw)
             store.audit("cli_import", {"backend": args.backend, "run_id": run.id})
             _emit(run.to_dict())
@@ -180,8 +251,14 @@ def main(argv=None) -> int:
         if args.command == "runs":
             if not 1 <= args.limit <= 100 or not 0 <= args.offset <= 1000000:
                 raise ValueError("Limit must be 1–100 and offset 0–1000000")
-            _emit({"items": store.list_summaries(args.limit, args.offset),
-                   "total": store.count_runs(), "limit": args.limit, "offset": args.offset})
+            _emit(
+                {
+                    "items": store.list_summaries(args.limit, args.offset),
+                    "total": store.count_runs(),
+                    "limit": args.limit,
+                    "offset": args.offset,
+                }
+            )
         elif args.command == "show":
             _emit(store.get_run(args.id).to_dict())
         elif args.command == "diff":
@@ -197,9 +274,11 @@ def main(argv=None) -> int:
         elif args.command == "enrich":
             if not args.kev and not args.epss:
                 raise ValueError("Provide at least one local --kev or --epss feed")
-            run = enrich_run(store.get_run(args.id),
-                             kev=load_kev(args.kev) if args.kev else None,
-                             epss=load_epss(args.epss) if args.epss else None)
+            run = enrich_run(
+                store.get_run(args.id),
+                kev=load_kev(args.kev) if args.kev else None,
+                epss=load_epss(args.epss) if args.epss else None,
+            )
             store.save_run(run)
             store.audit("cli_enrich", {"source_run": args.id, "run_id": run.id})
             _emit(run.to_dict())
@@ -227,5 +306,8 @@ def main(argv=None) -> int:
         print(f"Error: {error}", file=sys.stderr)
         return 2
     except Exception:
-        print("Error: the local operation could not complete. Check configuration and prerequisites.", file=sys.stderr)
+        print(
+            "Error: the local operation could not complete. Check configuration and prerequisites.",
+            file=sys.stderr,
+        )
         return 2

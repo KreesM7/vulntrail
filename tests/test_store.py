@@ -62,13 +62,19 @@ class StoreTests(unittest.TestCase):
         self.store.audit("response_planned", {"run_id": run.id})
         self.store.delete_run(run.id)
         with closing(sqlite3.connect(self.path)) as connection:
-            events = connection.execute("SELECT event, details_json FROM audit ORDER BY id").fetchall()
-        self.assertEqual([event for event, _ in events], ["run_saved", "response_planned", "run_deleted"])
+            events = connection.execute(
+                "SELECT event, details_json FROM audit ORDER BY id"
+            ).fetchall()
+        self.assertEqual(
+            [event for event, _ in events], ["run_saved", "response_planned", "run_deleted"]
+        )
         self.assertEqual(json.loads(events[0][1])["run_id"], run.id)
 
     def test_concurrent_operations_use_separate_connections(self):
         with ThreadPoolExecutor(max_workers=4) as executor:
-            runs = list(executor.map(lambda i: self.store.save_run(Run(str(i), "trivy")), range(12)))
+            runs = list(
+                executor.map(lambda i: self.store.save_run(Run(str(i), "trivy")), range(12))
+            )
         self.assertEqual(self.store.count_runs(), len(runs))
         for run in runs:
             self.assertEqual(self.store.get_run(run.id).target, run.target)
@@ -83,10 +89,14 @@ class StoreTests(unittest.TestCase):
             self.store.audit("x", {"data": "x" * 65536})
 
     def test_summaries_return_counts_without_finding_payloads(self):
-        run = Run("demo", "trivy", [
-            Finding("CVE-2025-1001", "one", "1", "pypi", "HIGH", description="x" * 16384),
-            Finding("CVE-2025-1002", "two", "1", "pypi", "LOW", description="x" * 16384),
-        ])
+        run = Run(
+            "demo",
+            "trivy",
+            [
+                Finding("CVE-2025-1001", "one", "1", "pypi", "HIGH", description="x" * 16384),
+                Finding("CVE-2025-1002", "two", "1", "pypi", "LOW", description="x" * 16384),
+            ],
+        )
         self.store.save_run(run)
         summary = self.store.list_summaries()[0]
         self.assertNotIn("findings", summary)

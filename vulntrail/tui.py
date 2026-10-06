@@ -1,4 +1,5 @@
 """Keyboard-first terminal review over the same real evidence store as the API."""
+
 import asyncio
 
 from rich.text import Text
@@ -16,8 +17,12 @@ from .store import Store
 class VulnTrailApp(App):
     TITLE = "VulnTrail · Local evidence"
     SUB_TITLE = "Coverage and source context matter"
-    BINDINGS = [("q", "quit", "Quit"), ("r", "refresh", "Refresh"),
-                ("s", "scan", "Scan configured target"), ("/", "search", "Search")]
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("r", "refresh", "Refresh"),
+        ("s", "scan", "Scan configured target"),
+        ("/", "search", "Search"),
+    ]
     CSS = """
     Screen { background: #112a36; color: #e8f2ef; }
     #controls { height: 5; padding: 1; }
@@ -52,10 +57,16 @@ class VulnTrailApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(id="controls"):
-            yield Select([(name, name) for name in sorted(self.settings.targets)],
-                         prompt="Configured target", allow_blank=not bool(self.settings.targets),
-                         value=next(iter(sorted(self.settings.targets)), Select.BLANK), id="target")
-            yield Button("Run scan", id="scan", variant="success", disabled=not bool(self.settings.targets))
+            yield Select(
+                [(name, name) for name in sorted(self.settings.targets)],
+                prompt="Configured target",
+                allow_blank=not bool(self.settings.targets),
+                value=next(iter(sorted(self.settings.targets)), Select.BLANK),
+                id="target",
+            )
+            yield Button(
+                "Run scan", id="scan", variant="success", disabled=not bool(self.settings.targets)
+            )
             yield Button("Refresh", id="refresh")
             yield Button("Previous", id="previous", disabled=True)
             yield Button("Next", id="next", disabled=True)
@@ -63,19 +74,32 @@ class VulnTrailApp(App):
         yield Label("Run history — arrows to navigate, Enter to inspect", classes="heading")
         yield DataTable(id="runs", cursor_type="row")
         with VerticalScroll(id="detail-scroll"):
-            yield Static("Select a run to inspect coverage and findings.", id="detail", markup=False)
+            yield Static(
+                "Select a run to inspect coverage and findings.", id="detail", markup=False
+            )
         with Horizontal(id="filters"):
             yield Input(placeholder="Search package, vulnerability, or location", id="search")
-            yield Select([("All severities", "")] + [(s, s) for s in reversed(SEVERITIES)],
-                         allow_blank=False, value="", id="severity")
+            yield Select(
+                [("All severities", "")] + [(s, s) for s in reversed(SEVERITIES)],
+                allow_blank=False,
+                value="",
+                id="severity",
+            )
         yield DataTable(id="findings", cursor_type="row")
-        yield Static("Zero findings do not establish security. Review run coverage and database age.",
-                     id="finding-detail", markup=False)
+        yield Static(
+            "Zero findings do not establish security. Review run coverage and database age.",
+            id="finding-detail",
+            markup=False,
+        )
         yield Footer()
 
     async def on_mount(self):
-        self.query_one("#runs", DataTable).add_columns("Started", "Target", "Backend", "Status", "Findings")
-        self.query_one("#findings", DataTable).add_columns("Priority", "Severity", "Vulnerability", "Package", "Installed", "Fixed")
+        self.query_one("#runs", DataTable).add_columns(
+            "Started", "Target", "Backend", "Status", "Findings"
+        )
+        self.query_one("#findings", DataTable).add_columns(
+            "Priority", "Severity", "Vulnerability", "Package", "Installed", "Fixed"
+        )
         await self.action_refresh()
 
     def status(self, value):
@@ -83,37 +107,62 @@ class VulnTrailApp(App):
 
     async def action_refresh(self):
         try:
-            runs = await asyncio.to_thread(self.store.list_summaries, self.page_size, self.page * self.page_size)
+            runs = await asyncio.to_thread(
+                self.store.list_summaries, self.page_size, self.page * self.page_size
+            )
             total = await asyncio.to_thread(self.store.count_runs)
             table = self.query_one("#runs", DataTable)
             table.clear()
             for run in runs:
-                table.add_row(*[Text(str(value)) for value in (run["started_at"][:19], run["target"],
-                    run["backend"], run["status"], run["finding_count"])], key=run["id"])
+                table.add_row(
+                    *[
+                        Text(str(value))
+                        for value in (
+                            run["started_at"][:19],
+                            run["target"],
+                            run["backend"],
+                            run["status"],
+                            run["finding_count"],
+                        )
+                    ],
+                    key=run["id"],
+                )
             self.query_one("#previous", Button).disabled = self.page == 0
             self.query_one("#next", Button).disabled = (self.page + 1) * self.page_size >= total
             if runs:
                 selected = next((run for run in runs if run["id"] == self.selected_run_id), runs[0])
                 self.show_run(await asyncio.to_thread(self.store.get_run, selected["id"]))
-                self.status(f"{total} stored runs · page {self.page + 1} · backend {'offline' if self.settings.offline else 'online'} mode")
+                self.status(
+                    f"{total} stored runs · page {self.page + 1} · backend {'offline' if self.settings.offline else 'online'} mode"
+                )
             else:
                 self.selected_run_id = None
                 self.selected_run = None
                 self.query_one("#findings", DataTable).clear()
-                self.query_one("#detail", Static).update("Select a run to inspect coverage and findings.")
-                self.status("No evidence on this page. Run a configured target or import a supported report with the CLI.")
+                self.query_one("#detail", Static).update(
+                    "Select a run to inspect coverage and findings."
+                )
+                self.status(
+                    "No evidence on this page. Run a configured target or import a supported report with the CLI."
+                )
         except Exception:
-            self.status("Local evidence could not load. Check the configuration and state directory.")
+            self.status(
+                "Local evidence could not load. Check the configuration and state directory."
+            )
 
     def show_run(self, run):
         self.selected_run = run
         self.selected_run_id = run.id
-        lines = [f"{run.target} · {run.backend} · {run.status}", f"Run: {run.id}",
-                 f"Started: {run.started_at}", f"Completed: {run.completed_at}",
-                 f"Database updated: {run.data_updated_at or 'Unknown; scan time is not database age'}",
-                 f"Backend version: {run.backend_version or 'Not recorded'}",
-                 f"Coverage: {', '.join(run.coverage) or 'No supported coverage recorded'}",
-                 f"Source digest: {run.source_digest or 'Not recorded'}"]
+        lines = [
+            f"{run.target} · {run.backend} · {run.status}",
+            f"Run: {run.id}",
+            f"Started: {run.started_at}",
+            f"Completed: {run.completed_at}",
+            f"Database updated: {run.data_updated_at or 'Unknown; scan time is not database age'}",
+            f"Backend version: {run.backend_version or 'Not recorded'}",
+            f"Coverage: {', '.join(run.coverage) or 'No supported coverage recorded'}",
+            f"Source digest: {run.source_digest or 'Not recorded'}",
+        ]
         lines.extend(f"Warning: {warning}" for warning in run.warnings)
         self.query_one("#detail", Static).update(Text("\n".join(lines)))
         self.filter_findings()
@@ -126,17 +175,38 @@ class VulnTrailApp(App):
             return
         query = self.query_one("#search", Input).value.strip().lower()
         severity = self.query_one("#severity", Select).value
-        findings = [f for f in self.selected_run.findings if (not severity or f.severity == severity)
-                    and (not query or query in " ".join((f.package, f.vulnerability_id,
-                                                        f.location, f.ecosystem)).lower())]
+        findings = [
+            f
+            for f in self.selected_run.findings
+            if (not severity or f.severity == severity)
+            and (
+                not query
+                or query
+                in " ".join((f.package, f.vulnerability_id, f.location, f.ecosystem)).lower()
+            )
+        ]
         for index, finding in enumerate(findings):
             key = f"{finding.fingerprint}-{index}"
             self.finding_lookup[key] = finding
-            table.add_row(*[Text(value) for value in (finding.priority, finding.severity,
-                finding.vulnerability_id, finding.package, finding.version,
-                finding.fixed_version or "Not supplied")], key=key)
-        self.query_one("#finding-detail", Static).update(Text(
-            f"{len(findings)} of {len(self.selected_run.findings)} findings. Enter a finding to inspect its source details."))
+            table.add_row(
+                *[
+                    Text(value)
+                    for value in (
+                        finding.priority,
+                        finding.severity,
+                        finding.vulnerability_id,
+                        finding.package,
+                        finding.version,
+                        finding.fixed_version or "Not supplied",
+                    )
+                ],
+                key=key,
+            )
+        self.query_one("#finding-detail", Static).update(
+            Text(
+                f"{len(findings)} of {len(self.selected_run.findings)} findings. Enter a finding to inspect its source details."
+            )
+        )
 
     @on(Input.Changed, "#search")
     @on(Select.Changed, "#severity")
@@ -188,13 +258,19 @@ class VulnTrailApp(App):
         try:
             run = await asyncio.to_thread(scan_target, self.settings, target)
             await asyncio.to_thread(self.store.save_run, run)
-            await asyncio.to_thread(self.store.audit, "tui_scan", {"target": target, "run_id": run.id})
+            await asyncio.to_thread(
+                self.store.audit, "tui_scan", {"target": target, "run_id": run.id}
+            )
             self.page = 0
             self.selected_run_id = run.id
             await self.action_refresh()
-            self.status(f"Scan recorded: {run.status} · {len(run.findings)} findings. Review coverage and warnings.")
+            self.status(
+                f"Scan recorded: {run.status} · {len(run.findings)} findings. Review coverage and warnings."
+            )
         except Exception:
-            self.status("The configured scan could not complete. Check backend prerequisites and configuration.")
+            self.status(
+                "The configured scan could not complete. Check backend prerequisites and configuration."
+            )
         finally:
             self.scanning = False
             self.query_one("#scan", Button).disabled = not bool(self.settings.targets)

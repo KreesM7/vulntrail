@@ -1,0 +1,16 @@
+name: Bug report
+description: Report a reproducible issue without private scan data
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected behavior and sanitized reproduction steps. Never paste tokens or real private inventories.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: OS, Python, VulnTrail and backend versions
+    validations:
+      required: true

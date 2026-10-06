@@ -2,6 +2,7 @@
 
 Digests identify supplied bytes; a local file's publisher is not authenticated.
 """
+
 import csv
 from datetime import date, datetime
 import hashlib
@@ -42,9 +43,13 @@ def _read(path: Path) -> bytes:
 
 
 def _provenance(source: str, source_date: str, content: bytes) -> dict:
-    return {"source": source, "source_date": source_date,
-            "sha256": hashlib.sha256(content).hexdigest(), "imported_at": utc_now(),
-            "derived_from": ""}
+    return {
+        "source": source,
+        "source_date": source_date,
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "imported_at": utc_now(),
+        "derived_from": "",
+    }
 
 
 def _cve(value):
@@ -65,14 +70,19 @@ def _pairs(pairs):
 def load_kev(path: Path) -> tuple[set[str], dict]:
     content = _read(path)
     try:
-        payload = json.loads(content.decode("utf-8-sig"), object_pairs_hook=_pairs,
-                             parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Nonfinite JSON")))
+        payload = json.loads(
+            content.decode("utf-8-sig"),
+            object_pairs_hook=_pairs,
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Nonfinite JSON")),
+        )
         if not isinstance(payload, dict) or not isinstance(payload.get("vulnerabilities"), list):
             raise ValueError("Expected CISA KEV catalog object")
         entries = payload["vulnerabilities"]
         if len(entries) > MAX_FEED_ROWS:
             raise ValueError("Feed exceeds row limit")
-        if "count" in payload and (type(payload["count"]) is not int or payload["count"] != len(entries)):
+        if "count" in payload and (
+            type(payload["count"]) is not int or payload["count"] != len(entries)
+        ):
             raise ValueError("KEV count differs from supplied rows")
         source_date = _date(payload.get("dateReleased"))
         values = set()
@@ -145,7 +155,11 @@ def _unpack(value, name: str):
     if isinstance(value, tuple) and len(value) == 2:
         data, provenance = value
         if not isinstance(provenance, dict) or set(provenance) != {
-            "source", "source_date", "sha256", "imported_at", "derived_from"
+            "source",
+            "source_date",
+            "sha256",
+            "imported_at",
+            "derived_from",
         }:
             raise ValueError("Invalid feed provenance")
         if any(not isinstance(item, str) or len(item) > 4096 for item in provenance.values()):

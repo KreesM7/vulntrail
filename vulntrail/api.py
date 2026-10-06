@@ -4,6 +4,7 @@ POST scans is unsafe to retry: an accepted request creates a new evidence run.
 The dashboard uses a short-lived in-memory session, while API clients always
 authenticate with a Bearer token. This service deliberately supports no proxy.
 """
+
 from collections import deque
 import hashlib
 import hmac
@@ -91,8 +92,9 @@ def create_app(settings: Settings, token: str) -> FastAPI:
         origin = request.headers.get("origin")
         expected_origin = f"{request.url.scheme}://{host}"
         try:
-            client_local = request.client is not None and ipaddress.ip_address(
-                request.client.host).is_loopback
+            client_local = (
+                request.client is not None and ipaddress.ip_address(request.client.host).is_loopback
+            )
         except ValueError:
             client_local = False
         if not client_local or len(host_values) != 1 or not _local_host(host):
@@ -130,8 +132,11 @@ def create_app(settings: Settings, token: str) -> FastAPI:
                 response = _error(429, "RATE_LIMITED", "Too many requests; try later")
             elif path.startswith("/api/v1/"):
                 authorization = request.headers.get("authorization", "")
-                if (len(authorization) > 520 or not authorization.startswith("Bearer ")
-                        or not valid_token(authorization[7:])):
+                if (
+                    len(authorization) > 520
+                    or not authorization.startswith("Bearer ")
+                    or not valid_token(authorization[7:])
+                ):
                     response = _error(401, "UNAUTHORIZED", "A valid Bearer token is required")
             else:
                 cookie = request.cookies.get(COOKIE, "")
@@ -144,14 +149,18 @@ def create_app(settings: Settings, token: str) -> FastAPI:
                 response = await call_next(request)
             except Exception:
                 response = _error(500, "INTERNAL_ERROR", "The local operation could not complete")
-        response.headers.update({
-            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; "
+        response.headers.update(
+            {
+                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; "
                 "connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; "
                 "frame-ancestors 'none'; form-action 'self'",
-            "X-Frame-Options": "DENY", "X-Content-Type-Options": "nosniff",
-            "Referrer-Policy": "no-referrer", "Cache-Control": "no-store",
-            "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-        })
+                "X-Frame-Options": "DENY",
+                "X-Content-Type-Options": "nosniff",
+                "Referrer-Policy": "no-referrer",
+                "Cache-Control": "no-store",
+                "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+            }
+        )
         return response
 
     @app.exception_handler(RequestValidationError)
@@ -160,12 +169,19 @@ def create_app(settings: Settings, token: str) -> FastAPI:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exception):
-        codes = {400: "BAD_REQUEST", 401: "UNAUTHORIZED", 403: "FORBIDDEN",
-                 404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 409: "CONFLICT",
-                 422: "VALIDATION_ERROR"}
+        codes = {
+            400: "BAD_REQUEST",
+            401: "UNAUTHORIZED",
+            403: "FORBIDDEN",
+            404: "NOT_FOUND",
+            405: "METHOD_NOT_ALLOWED",
+            409: "CONFLICT",
+            422: "VALIDATION_ERROR",
+        }
         message = exception.detail if isinstance(exception.detail, str) else "Request failed"
-        return _error(exception.status_code, codes.get(exception.status_code, "REQUEST_ERROR"),
-                      message)
+        return _error(
+            exception.status_code, codes.get(exception.status_code, "REQUEST_ERROR"), message
+        )
 
     @app.get("/", include_in_schema=False)
     def dashboard():
@@ -173,8 +189,9 @@ def create_app(settings: Settings, token: str) -> FastAPI:
 
     @app.get("/static/{asset}", include_in_schema=False)
     def asset(asset: Literal["app.js", "style.css"]):
-        return FileResponse(STATIC / asset,
-                            media_type="text/javascript" if asset.endswith(".js") else "text/css")
+        return FileResponse(
+            STATIC / asset, media_type="text/javascript" if asset.endswith(".js") else "text/css"
+        )
 
     @app.post("/ui/session", include_in_schema=False)
     def login(body: LoginRequest, request: Request):
@@ -190,8 +207,15 @@ def create_app(settings: Settings, token: str) -> FastAPI:
         sessions[hashlib.sha256(session.encode()).hexdigest()] = now + SESSION_SECONDS
         store.audit("dashboard_login", {})
         response = JSONResponse({"authenticated": True, "expires_in": SESSION_SECONDS})
-        response.set_cookie(COOKIE, session, max_age=SESSION_SECONDS, httponly=True,
-                            samesite="strict", secure=request.url.scheme == "https", path="/ui")
+        response.set_cookie(
+            COOKIE,
+            session,
+            max_age=SESSION_SECONDS,
+            httponly=True,
+            samesite="strict",
+            secure=request.url.scheme == "https",
+            path="/ui",
+        )
         return response
 
     @app.delete("/ui/session", include_in_schema=False)
@@ -214,14 +238,22 @@ def create_app(settings: Settings, token: str) -> FastAPI:
 
     @router.get("/status")
     def status():
-        return {"version": "0.1.0", "offline": settings.offline,
-                "targets": sorted(settings.targets), "running": scan_lock.locked(),
-                "run_count": store.count_runs()}
+        return {
+            "version": "0.1.0",
+            "offline": settings.offline,
+            "targets": sorted(settings.targets),
+            "running": scan_lock.locked(),
+            "run_count": store.count_runs(),
+        }
 
     @router.get("/runs")
     def runs(limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0, le=1000000)):
-        return {"items": store.list_summaries(limit, offset),
-                "total": store.count_runs(), "limit": limit, "offset": offset}
+        return {
+            "items": store.list_summaries(limit, offset),
+            "total": store.count_runs(),
+            "limit": limit,
+            "offset": offset,
+        }
 
     @router.get("/runs/{run_id}")
     def detail(run_id: str):
@@ -231,16 +263,22 @@ def create_app(settings: Settings, token: str) -> FastAPI:
     def report(run_id: str, format: Literal["json", "md", "html"] = "json"):
         run = get_run(run_id)
         media = {"json": "application/json", "md": "text/markdown", "html": "text/html"}
-        return Response(render_report(run, format), media_type=media[format], headers={
-            "Content-Disposition": f'attachment; filename="vulntrail-report.{format}"'})
+        return Response(
+            render_report(run, format),
+            media_type=media[format],
+            headers={"Content-Disposition": f'attachment; filename="vulntrail-report.{format}"'},
+        )
 
     @router.get("/comparisons")
-    def comparison(before: str = Query(min_length=1, max_length=128),
-                   after: str = Query(min_length=1, max_length=128)):
+    def comparison(
+        before: str = Query(min_length=1, max_length=128),
+        after: str = Query(min_length=1, max_length=128),
+    ):
         return compare_runs(get_run(before), get_run(after))
 
-    @router.post("/scans", status_code=201,
-                 description="Creates a new run; unsafe to retry automatically.")
+    @router.post(
+        "/scans", status_code=201, description="Creates a new run; unsafe to retry automatically."
+    )
     def scan(body: ScanRequest):
         if body.target not in settings.targets:
             raise HTTPException(422, "Choose a configured target")

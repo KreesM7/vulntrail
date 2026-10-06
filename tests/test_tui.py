@@ -27,7 +27,23 @@ class TuiTests(unittest.IsolatedAsyncioTestCase):
             await pilot.pause()
             self.assertEqual(app.query_one("#runs", DataTable).row_count, 0)
             self.assertIn("No evidence", str(app.query_one("#status", Static).render()))
-            run = self.store.save_run(Run("demo", "trivy", [Finding("CVE-TEST", "example", "1", "pypi", "HIGH", description="A real stored description")], coverage=["requirements.txt"]))
+            run = self.store.save_run(
+                Run(
+                    "demo",
+                    "trivy",
+                    [
+                        Finding(
+                            "CVE-TEST",
+                            "example",
+                            "1",
+                            "pypi",
+                            "HIGH",
+                            description="A real stored description",
+                        )
+                    ],
+                    coverage=["requirements.txt"],
+                )
+            )
             await app.action_refresh()
             await pilot.pause()
             self.assertEqual(app.query_one("#runs", DataTable).row_count, 1)
@@ -42,7 +58,10 @@ class TuiTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_scan_worker_records_configured_scan_and_refreshes(self):
         app = VulnTrailApp(self.settings, self.store)
-        with patch("vulntrail.tui.scan_target", side_effect=lambda *args: Run("demo", "trivy", coverage=["requirements.txt"])):
+        with patch(
+            "vulntrail.tui.scan_target",
+            side_effect=lambda *args: Run("demo", "trivy", coverage=["requirements.txt"]),
+        ):
             async with app.run_test(size=(100, 40)) as pilot:
                 await pilot.pause()
                 self.assertTrue(await pilot.click("#scan", offset=(3, 1)))
@@ -55,7 +74,9 @@ class TuiTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_failed_worker_displays_error_and_releases_scan_state(self):
         app = VulnTrailApp(self.settings, self.store)
-        with patch("vulntrail.tui.scan_target", side_effect=RuntimeError("sensitive internal path")):
+        with patch(
+            "vulntrail.tui.scan_target", side_effect=RuntimeError("sensitive internal path")
+        ):
             async with app.run_test(size=(100, 40)) as pilot:
                 await pilot.pause()
                 self.assertTrue(await pilot.click("#scan", offset=(3, 1)))

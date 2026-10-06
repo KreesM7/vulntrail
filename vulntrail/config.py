@@ -1,8 +1,10 @@
 """Fail-closed local configuration. No executable commands accepted over HTTP."""
+
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 import re
 import yaml
+
 
 @dataclass
 class Settings:
@@ -20,9 +22,13 @@ class Settings:
     def __post_init__(self):
         if type(self.offline) is not bool:
             raise ValueError("offline must be a boolean")
-        for name, maximum in (("timeout_seconds", 3600), ("max_report_bytes", 100*1024*1024),
-                              ("max_findings", 20000), ("interval_seconds", 86400),
-                              ("max_data_age_days", 3650)):
+        for name, maximum in (
+            ("timeout_seconds", 3600),
+            ("max_report_bytes", 100 * 1024 * 1024),
+            ("max_findings", 20000),
+            ("interval_seconds", 86400),
+            ("max_data_age_days", 3650),
+        ):
             value = getattr(self, name)
             if type(value) is not int or not 1 <= value <= maximum:
                 raise ValueError(f"Invalid {name}")
@@ -30,7 +36,9 @@ class Settings:
             raise ValueError("targets must be a map of at most 100 local targets")
         resolved = {}
         for name, path in self.targets.items():
-            if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name):
+            if not isinstance(name, str) or not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name
+            ):
                 raise ValueError("Invalid target name")
             raw = str(path)
             if "://" in raw or raw.startswith(("\\\\", "//")) or "\x00" in raw:
@@ -44,10 +52,15 @@ class Settings:
         self.targets = resolved
         self.state_dir = Path(self.state_dir).expanduser().resolve()
         self.cache_dir = Path(self.cache_dir or self.state_dir / "cache").expanduser().resolve()
-        if not isinstance(self.trivy_path, str) or not self.trivy_path.strip() or "\x00" in self.trivy_path:
+        if (
+            not isinstance(self.trivy_path, str)
+            or not self.trivy_path.strip()
+            or "\x00" in self.trivy_path
+        ):
             raise ValueError("Invalid Trivy executable")
         if Path(self.trivy_path).suffix.lower() in (".cmd", ".bat", ".ps1", ".sh"):
             raise ValueError("Configure a trusted executable, not a shell script")
+
 
 def load_settings(path: Path | None = None) -> Settings:
     if path is None:
@@ -71,6 +84,7 @@ def load_settings(path: Path | None = None) -> Settings:
     targets = values.get("targets", {})
     if not isinstance(targets, dict):
         raise ValueError("targets must be a mapping")
+
     def relative(value):
         if not isinstance(value, str) or not value:
             raise ValueError("Paths must be nonempty strings")
@@ -78,6 +92,7 @@ def load_settings(path: Path | None = None) -> Settings:
             raise ValueError("Only local paths are supported")
         p = Path(value).expanduser()
         return p if p.is_absolute() else path.parent / p
+
     values["targets"] = {name: relative(value) for name, value in targets.items()}
     for name in ("state_dir", "cache_dir"):
         if name in values:

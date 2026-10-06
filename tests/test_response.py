@@ -16,16 +16,24 @@ from vulntrail.store import Store
 
 class ResponsePlanTests(unittest.TestCase):
     def test_plans_human_review_upgrade_and_verification_without_commands(self):
-        run = Run("demo", "trivy", [
-            Finding("CVE-2025-1001", "demo; rm -rf /", "1", "pypi", "HIGH", fixed_version="2"),
-            Finding("CVE-2025-1002", "other", "1", "pypi", "LOW", kev=True),
-        ], status="partial", warnings=["Coverage incomplete"])
+        run = Run(
+            "demo",
+            "trivy",
+            [
+                Finding("CVE-2025-1001", "demo; rm -rf /", "1", "pypi", "HIGH", fixed_version="2"),
+                Finding("CVE-2025-1002", "other", "1", "pypi", "LOW", kev=True),
+            ],
+            status="partial",
+            warnings=["Coverage incomplete"],
+        )
         plan = plan_response(run)
         self.assertEqual(plan["run_id"], run.id)
         self.assertEqual(plan["actions"][0]["priority"], "P1")
         self.assertNotIn("command", str(plan).lower())
         self.assertTrue(any("2" in action["advice"] for action in plan["actions"]))
-        self.assertTrue(all("verify" in action["verification"].lower() for action in plan["actions"]))
+        self.assertTrue(
+            all("verify" in action["verification"].lower() for action in plan["actions"])
+        )
         self.assertIn("partial", plan["limitations"])
 
     def test_empty_plan_is_not_a_security_assurance(self):
@@ -76,7 +84,9 @@ class ArtifactResponseTests(unittest.TestCase):
                 response.hold_artifact(self.root, target, self.digest, self.store)
         self.hold()
         with self.assertRaises(ValueError):
-            response.hold_artifact(self.root, self.root / ".vulntrail-hold/owner.json", self.digest, self.store)
+            response.hold_artifact(
+                self.root, self.root / ".vulntrail-hold/owner.json", self.digest, self.store
+            )
 
     def test_foreign_owner_and_reparse_ancestors_fail_closed(self):
         with patch("vulntrail.response._owner", return_value="other-owner"):
@@ -87,7 +97,10 @@ class ArtifactResponseTests(unittest.TestCase):
         target = nested / "artifact"
         target.write_bytes(b"project artifact")
         original = response._reparse
-        with patch("vulntrail.response._reparse", side_effect=lambda path: Path(path) == nested or original(path)):
+        with patch(
+            "vulntrail.response._reparse",
+            side_effect=lambda path: Path(path) == nested or original(path),
+        ):
             with self.assertRaises(ValueError):
                 response.hold_artifact(self.root, target, self.digest, self.store)
         self.assertTrue(target.exists())
@@ -95,7 +108,10 @@ class ArtifactResponseTests(unittest.TestCase):
     def test_real_symlink_is_rejected_on_posix_and_reparse_file_on_windows(self):
         if os.name == "nt":
             original = response._reparse
-            with patch("vulntrail.response._reparse", side_effect=lambda path: Path(path) == self.artifact or original(path)):
+            with patch(
+                "vulntrail.response._reparse",
+                side_effect=lambda path: Path(path) == self.artifact or original(path),
+            ):
                 with self.assertRaises(ValueError):
                     self.hold()
         else:

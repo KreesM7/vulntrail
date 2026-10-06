@@ -39,11 +39,31 @@ class CliTests(unittest.TestCase):
 
     def test_import_list_detail_report_diff_are_persisted(self):
         report = self.root / "report.json"
-        report.write_text(json.dumps({"SchemaVersion": 2, "Results": [{"Target": "requirements.txt",
-            "Class": "lang-pkgs", "Type": "pip", "Vulnerabilities": [{"VulnerabilityID": "CVE-TEST",
-            "PkgName": "demo", "InstalledVersion": "1", "Severity": "HIGH"}]}]}))
-        code, output, _ = self.call(*self.args, "import", str(report), "--backend", "trivy",
-                                    "--target", "demo")
+        report.write_text(
+            json.dumps(
+                {
+                    "SchemaVersion": 2,
+                    "Results": [
+                        {
+                            "Target": "requirements.txt",
+                            "Class": "lang-pkgs",
+                            "Type": "pip",
+                            "Vulnerabilities": [
+                                {
+                                    "VulnerabilityID": "CVE-TEST",
+                                    "PkgName": "demo",
+                                    "InstalledVersion": "1",
+                                    "Severity": "HIGH",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
+        code, output, _ = self.call(
+            *self.args, "import", str(report), "--backend", "trivy", "--target", "demo"
+        )
         self.assertEqual(code, 0)
         run_id = json.loads(output)["id"]
         code, output, _ = self.call(*self.args, "runs")
@@ -59,7 +79,10 @@ class CliTests(unittest.TestCase):
 
     def test_scan_failure_and_requested_severity_exit_codes(self):
         def high_scan(*args):
-            return Run("demo", "trivy", [Finding("CVE-TEST", "pkg", "1", "pypi", "HIGH")], coverage=["x"])
+            return Run(
+                "demo", "trivy", [Finding("CVE-TEST", "pkg", "1", "pypi", "HIGH")], coverage=["x"]
+            )
+
         with patch("vulntrail.cli.scan_target", side_effect=high_scan):
             self.assertEqual(self.call(*self.args, "scan", "demo")[0], 0)
             self.assertEqual(self.call(*self.args, "scan", "demo", "--fail-on", "HIGH")[0], 1)
@@ -68,16 +91,39 @@ class CliTests(unittest.TestCase):
 
     def test_watch_count_is_bounded_and_no_sleep_after_final_scan(self):
         store = Store(load_settings(self.config).state_dir / "evidence.sqlite3")
-        with patch("vulntrail.cli.scan_target", side_effect=lambda *args: Run("demo", "trivy", coverage=["x"])), patch("vulntrail.cli.time.sleep") as sleep:
-            self.assertEqual(self.call(*self.args, "watch", "demo", "--count", "2", "--interval", "1")[0], 0)
+        with (
+            patch(
+                "vulntrail.cli.scan_target",
+                side_effect=lambda *args: Run("demo", "trivy", coverage=["x"]),
+            ),
+            patch("vulntrail.cli.time.sleep") as sleep,
+        ):
+            self.assertEqual(
+                self.call(*self.args, "watch", "demo", "--count", "2", "--interval", "1")[0], 0
+            )
         self.assertEqual(store.count_runs(), 2)
         sleep.assert_called_once_with(1.0)
 
     def test_enrichment_creates_copy_response_and_holding_roundtrip(self):
         store = Store(load_settings(self.config).state_dir / "evidence.sqlite3")
-        run = store.save_run(Run("demo", "trivy", [Finding("CVE-2024-0001", "pkg", "1", "pypi", "HIGH", fixed_version="2")], coverage=["x"]))
+        run = store.save_run(
+            Run(
+                "demo",
+                "trivy",
+                [Finding("CVE-2024-0001", "pkg", "1", "pypi", "HIGH", fixed_version="2")],
+                coverage=["x"],
+            )
+        )
         kev = self.root / "kev.json"
-        kev.write_text(json.dumps({"catalogVersion": "2026.10.06", "dateReleased": "2026-10-06T00:00:00Z", "vulnerabilities": [{"cveID": "CVE-2024-0001"}]}))
+        kev.write_text(
+            json.dumps(
+                {
+                    "catalogVersion": "2026.10.06",
+                    "dateReleased": "2026-10-06T00:00:00Z",
+                    "vulnerabilities": [{"cveID": "CVE-2024-0001"}],
+                }
+            )
+        )
         code, output, _ = self.call(*self.args, "enrich", run.id, "--kev", str(kev))
         self.assertEqual(code, 0)
         enriched = json.loads(output)
@@ -88,12 +134,17 @@ class CliTests(unittest.TestCase):
         artifact = self.root / "owned.txt"
         artifact.write_text("owned artifact")
         import hashlib
+
         digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
-        code, output, error = self.call(*self.args, "hold", str(self.root), "owned.txt", "--sha256", digest, "--confirm")
+        code, output, error = self.call(
+            *self.args, "hold", str(self.root), "owned.txt", "--sha256", digest, "--confirm"
+        )
         self.assertEqual(code, 0, error)
         held = json.loads(output)
         self.assertFalse(artifact.exists())
-        code, _, error = self.call(*self.args, "restore", str(self.root), held["hold_id"], "--sha256", digest, "--confirm")
+        code, _, error = self.call(
+            *self.args, "restore", str(self.root), held["hold_id"], "--sha256", digest, "--confirm"
+        )
         self.assertEqual(code, 0, error)
         self.assertEqual(artifact.read_text(), "owned artifact")
 

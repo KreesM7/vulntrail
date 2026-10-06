@@ -1,6 +1,7 @@
 import unittest
 from vulntrail.models import Finding, Run
 
+
 class ModelTests(unittest.TestCase):
     def test_priority_and_round_trip(self):
         finding = Finding("CVE-2024-0001", "demo", "1.0", "pypi", "HIGH")

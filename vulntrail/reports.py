@@ -1,4 +1,5 @@
 """Portable exports: evidence content is encoded, never trusted markup."""
+
 import html
 import json
 import re
@@ -10,8 +11,20 @@ _LIMITS = (
     "It does not establish that the target is secure or that a missing finding is resolved. "
     "Priority is a triage aid, not proof of exploitability."
 )
-_COLUMNS = ("vulnerability_id", "package", "version", "fixed_version", "ecosystem", "location",
-            "severity", "priority", "kev", "epss", "description", "urls")
+_COLUMNS = (
+    "vulnerability_id",
+    "package",
+    "version",
+    "fixed_version",
+    "ecosystem",
+    "location",
+    "severity",
+    "priority",
+    "kev",
+    "epss",
+    "description",
+    "urls",
+)
 
 
 def _value(value) -> str:
@@ -53,13 +66,17 @@ def render_report(run: Run, format: str) -> str:
             for finding in snapshot["findings"]:
                 lines.append("| " + " | ".join(_markdown(finding[key]) for key in _COLUMNS) + " |")
         return "\n".join(lines) + "\n"
+
     def escape(value):
         return html.escape(_value(value), quote=True)
+
     details = "".join(f"<dt>{key}</dt><dd>{escape(value)}</dd>" for key, value in metadata.items())
     if snapshot["findings"]:
-        header = "".join(f"<th scope=\"col\">{key}</th>" for key in _COLUMNS)
-        rows = "".join("<tr>" + "".join(f"<td>{escape(finding[key])}</td>" for key in _COLUMNS)
-                       + "</tr>" for finding in snapshot["findings"])
+        header = "".join(f'<th scope="col">{key}</th>' for key in _COLUMNS)
+        rows = "".join(
+            "<tr>" + "".join(f"<td>{escape(finding[key])}</td>" for key in _COLUMNS) + "</tr>"
+            for finding in snapshot["findings"]
+        )
         findings = f"<table><thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table>"
     else:
         findings = "<p>No findings were reported in this scan record.</p>"
@@ -67,7 +84,7 @@ def render_report(run: Run, format: str) -> str:
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;">'
-        '<title>VulnTrail evidence report</title></head><body><main>'
+        "<title>VulnTrail evidence report</title></head><body><main>"
         f"<h1>VulnTrail evidence report</h1><p>{escape(_LIMITS)}</p>"
         f"<h2>Scan record</h2><dl>{details}</dl><h2>Findings</h2>{findings}"
         "</main></body></html>\n"

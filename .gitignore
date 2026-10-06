@@ -9,7 +9,12 @@ dist/
 .env.*
 *.db
 *.db-*
+*.sqlite3
+*.sqlite3-*
 *.pem
 *.key
 .coverage
 .ruff_cache/
+tests/tmp*/
+config.yaml
+.vulntrail-hold/
