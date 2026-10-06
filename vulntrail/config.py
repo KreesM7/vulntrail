@@ -35,7 +35,12 @@ class Settings:
             raw = str(path)
             if "://" in raw or raw.startswith(("\\\\", "//")) or "\x00" in raw:
                 raise ValueError("Only local filesystem targets are supported")
-            resolved[name] = Path(path).expanduser().resolve()
+            if not isinstance(path, (str, Path)):
+                raise ValueError("Target paths must be strings or local paths")
+            local = Path(path).expanduser().resolve()
+            if str(local).startswith(("\\\\", "//")):
+                raise ValueError("Resolved network targets are unsupported")
+            resolved[name] = local
         self.targets = resolved
         self.state_dir = Path(self.state_dir).expanduser().resolve()
         self.cache_dir = Path(self.cache_dir or self.state_dir / "cache").expanduser().resolve()

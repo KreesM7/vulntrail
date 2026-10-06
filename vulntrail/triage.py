@@ -4,6 +4,7 @@ from .models import Run
 def compare_runs(before: Run, after: Run) -> dict:
     compatible = (before.status == after.status == "complete"
                   and before.target == after.target and before.backend == after.backend
+                  and bool(before.target_identity) and before.target_identity == after.target_identity
                   and before.backend_version == after.backend_version
                   and before.offline == after.offline
                   and bool(before.coverage)

@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from vulntrail.config import Settings, load_settings
 
@@ -27,3 +28,10 @@ class ConfigTests(unittest.TestCase):
                 path.write_text(body, encoding="utf-8")
                 with self.assertRaises(ValueError):
                     load_settings(path)
+
+    def test_resolved_network_target_and_invalid_path_shape_rejected(self):
+        with patch.object(Path, "resolve", return_value=Path("//server/share")):
+            with self.assertRaises(ValueError):
+                Settings(targets={"app": "local-link"})
+        with self.assertRaises(ValueError):
+            Settings(targets={"app": 7})

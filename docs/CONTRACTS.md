@@ -8,6 +8,8 @@ Finding: dataclass fields vulnerability_id, package, version, ecosystem, severit
 
 Run: dataclass fields target, backend, findings=[], status="complete" (complete/partial/failed), coverage=[], warnings=[], offline=True, data_updated_at=None, source_digest="", backend_version="", id=uuid, started_at=UTC timestamp, completed_at=UTC timestamp. to_dict()/from_dict(). Scan import time is not data update time.
 
+Run also includes target_identity="" (normalized resolved local path hash for executed scans; unknown for bare imports) and enrichment=[] (bounded feed provenance). History requires identical nonempty target identities; a reused alias or bare import cannot establish a disappearance. Unsupported result classes or absent assessment/inventory never count as vulnerability coverage.
+
 ## Provider boundaries
 
 config.Settings: state_dir: Path; targets: dict[str, Path]; trivy_path="trivy"; cache_dir: Path; offline=True; timeout_seconds=300; max_report_bytes=25*1024*1024; max_findings=20000; interval_seconds=3600; max_data_age_days=7. load_settings(path: Path | None)->Settings. Config paths relative to config parent. Unknown keys, invalid limits and remote targets rejected.

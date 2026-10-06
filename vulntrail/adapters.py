@@ -66,7 +66,16 @@ def parse_report(payload: dict, backend: str, target: str, offline=True,
         for result in results:
             obj(result, "result")
             location = string(result.get("Target"), "target", required=True)
-            ecosystem = string(result.get("Type"), "ecosystem") or "unknown"
+            ecosystem = string(result.get("Type"), "ecosystem", required=True)
+            result_class = string(result.get("Class"), "result class", required=True)
+            if result_class not in ("os-pkgs", "lang-pkgs"):
+                run.status = "partial"
+                run.warnings.append("Unsupported result class; vulnerability coverage is incomplete.")
+                continue
+            if "Packages" not in result and "Vulnerabilities" not in result:
+                run.status = "partial"
+                run.warnings.append("Result has no declared vulnerability assessment or inventory.")
+                continue
             run.coverage.append(f"{ecosystem}:{location}")
             if result.get("Class") == "os-pkgs":
                 osdata = obj(payload.get("Metadata", {}).get("OS", {}), "OS")

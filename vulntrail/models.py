@@ -82,6 +82,7 @@ class Run:
     data_updated_at: str | None = None
     source_digest: str = ""
     backend_version: str = ""
+    target_identity: str = ""
     enrichment: list[dict] = field(default_factory=list)
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     started_at: str = field(default_factory=utc_now)
@@ -89,7 +90,7 @@ class Run:
 
     def __post_init__(self):
         for name in ("target", "backend", "id", "started_at", "completed_at",
-                     "source_digest", "backend_version"):
+                     "source_digest", "backend_version", "target_identity"):
             text(getattr(self, name), name, required=name in ("target", "backend", "id"))
         if self.status not in ("complete", "partial", "failed") or type(self.offline) is not bool:
             raise ValueError("Invalid run status or offline flag")

@@ -14,12 +14,17 @@ class HistoryTests(unittest.TestCase):
 
     def test_complete_matching_coverage_can_describe_absence_not_resolution(self):
         finding = Finding("CVE-2024-0001", "demo", "1", "pypi", "HIGH")
-        before = Run("app", "trivy", [finding], coverage=["pip:requirements.txt"])
-        after = Run("app", "trivy", coverage=["pip:requirements.txt"])
+        before = Run("app", "trivy", [finding], coverage=["pip:requirements.txt"], target_identity="fixture:app")
+        after = Run("app", "trivy", coverage=["pip:requirements.txt"], target_identity="fixture:app")
         diff = compare_runs(before, after)
         self.assertTrue(diff["comparable"])
         self.assertEqual(len(diff["no_longer_observed"]), 1)
         self.assertNotIn("resolved", diff)
+
+    def test_reused_alias_without_subject_identity_cannot_prove_absence(self):
+        a = Run("app", "trivy", coverage=["scope"])
+        b = Run("app", "trivy", coverage=["scope"])
+        self.assertFalse(compare_runs(a, b)["comparable"])
 
     def test_backend_version_and_target_changes_are_not_comparable(self):
         a = Run("app", "trivy", coverage=["scope"], backend_version="1")

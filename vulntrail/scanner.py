@@ -1,5 +1,6 @@
 """Bounded invocation of a configured local Trivy engine; no shell or target URL."""
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -85,7 +86,8 @@ def scan_target(settings: Settings, target_name: str) -> Run:
     if target_name not in settings.targets:
         raise ValueError("Choose a configured authorized target")
     target = settings.targets[target_name]
-    run = Run(target_name, "trivy", offline=settings.offline)
+    target_identity = hashlib.sha256(os.path.normcase(str(target.resolve())).encode()).hexdigest()
+    run = Run(target_name, "trivy", offline=settings.offline, target_identity=target_identity)
     if not target.exists():
         run.status = "failed"
         run.warnings = ["Target does not exist or cannot be accessed."]
@@ -122,6 +124,7 @@ def scan_target(settings: Settings, target_name: str) -> Run:
             parsed = parse_report(payload, "trivy", target_name, offline=settings.offline,
                                   max_findings=settings.max_findings)
             parsed.id, parsed.started_at, parsed.completed_at = run.id, run.started_at, utc_now()
+            parsed.target_identity = target_identity
             parsed.backend_version = str(version_data.get("Version", "unknown"))
             if metadata_path.is_file():
                 updated = read_json(metadata_path, 65536).get("UpdatedAt")

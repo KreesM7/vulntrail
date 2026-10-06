@@ -48,3 +48,10 @@ class AdapterTests(unittest.TestCase):
         data = trivy_payload()
         data["Results"][0]["Vulnerabilities"] *= 2
         self.assertEqual(len(parse_report(data, "trivy", "x").findings), 1)
+
+    def test_secret_only_results_never_count_as_vulnerability_coverage(self):
+        data = {"SchemaVersion": 2, "Results": [{"Target":"requirements.txt", "Type":"pip",
+            "Class":"secret", "Secrets":[{"RuleID":"demo"}]}]}
+        run = parse_report(data, "trivy", "app")
+        self.assertEqual(run.status, "partial")
+        self.assertEqual(run.coverage, [])
