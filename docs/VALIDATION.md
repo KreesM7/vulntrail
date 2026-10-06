@@ -39,10 +39,15 @@ A separate reviewer identified false vulnerability coverage from non-vulnerabili
 Trivy classes and false disappearance when a target alias was reused. Regression
 tests now guard both. Review also prompted resolved network-target rejection and
 explicit Windows DACL/shared-writer limits for artifact holding. This was focused
-  engineering review, not a comprehensive external audit or penetration test.
+engineering review, not a comprehensive external audit or penetration test.
 
 Initial remote CI rejected a YAML command containing an unquoted trailing colon.
 The command is now quoted and a distribution regression test parses workflow YAML.
+
+Windows hosted CI rejected default fixture ownership. The test process temporarily
+creates fixtures with its account as default owner, then restores the original
+setting. Production ownership checks remain unchanged. This follows
+[Microsoft's TokenOwner contract](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_owner).
 
 ## Limits and pending evidence
 

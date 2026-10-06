@@ -12,6 +12,7 @@ from vulntrail.models import Finding, Run
 from vulntrail.response import plan_response
 from vulntrail import response
 from vulntrail.store import Store
+from _windows_fixture import user_owned_creation
 
 
 class ResponsePlanTests(unittest.TestCase):
@@ -44,6 +45,9 @@ class ResponsePlanTests(unittest.TestCase):
 
 class ArtifactResponseTests(unittest.TestCase):
     def setUp(self):
+        owners = user_owned_creation()
+        owners.__enter__()
+        self.addCleanup(owners.__exit__, None, None, None)
         self.temp = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "project"

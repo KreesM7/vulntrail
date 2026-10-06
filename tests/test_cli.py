@@ -10,10 +10,14 @@ from vulntrail.cli import main
 from vulntrail.config import load_settings
 from vulntrail.models import Finding, Run
 from vulntrail.store import Store
+from _windows_fixture import user_owned_creation
 
 
 class CliTests(unittest.TestCase):
     def setUp(self):
+        owners = user_owned_creation()
+        owners.__enter__()
+        self.addCleanup(owners.__exit__, None, None, None)
         self.temp = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent)
         self.root = Path(self.temp.name)
         self.config = self.root / "config.yaml"

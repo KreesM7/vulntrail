@@ -34,6 +34,8 @@ unsupported. Project-access writers are outside the integrity guarantee. POSIX
 rejects group/other writable holding directories. Native handles/no-follow traversal
 reduce replacement races; they do not make writable project trees adversary-proof.
 Review the exact SHA-256, keep backups, and never hold system/privileged files.
+Use a non-elevated terminal for holding. Group-owned/elevated-created files may
+be rejected; VulnTrail never automatically changes their ownership or permissions.
 
 Network shares and mapped network drives are unsupported. Resolved UNC targets
 are rejected, but mapped drive provenance is not automatically attested. Avoid
