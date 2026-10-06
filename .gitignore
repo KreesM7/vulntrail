@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.vulntrail/
+.env
+.env.*
+*.db
+*.db-*
+*.pem
+*.key
+.coverage
+.ruff_cache/
