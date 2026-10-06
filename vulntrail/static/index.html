@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VulnTrail · Local evidence</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to evidence</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="VulnTrail home"><span aria-hidden="true">◈</span> VulnTrail</a>
+    <span class="local-label">LOCAL EVIDENCE</span>
+    <button id="logout" class="quiet" hidden>Sign out</button>
+  </header>
+  <main id="main">
+    <div class="heading"><div><p class="eyebrow">VULNERABILITY OPERATIONS</p><h1>Your evidence, in context.</h1>
+      <p class="subtitle">Review supported backend findings and track what changed between scans.</p></div>
+      <span id="mode" class="mode">Local connection</span>
+    </div>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <p id="error" role="alert" tabindex="-1" hidden></p>
+    <section id="login-panel" class="login-panel" aria-labelledby="login-title">
+      <div><p class="eyebrow">PRIVATE WORKSPACE</p><h2 id="login-title">Connect to your local scanner</h2>
+        <p>Enter the token you supplied when starting the server. This session expires after one hour.</p></div>
+      <form id="login-form"><label for="token">Local access token</label>
+        <input id="token" type="password" minlength="32" maxlength="512" required autocomplete="off" spellcheck="false">
+        <button type="submit">Connect</button></form>
+    </section>
+    <div id="workspace" hidden>
+      <section class="scanbar" aria-label="Scan configured target">
+        <div><label for="target">Configured target</label><select id="target"></select></div>
+        <button id="scan">Run scan</button><button id="refresh" class="quiet">Refresh evidence</button>
+        <p id="scan-help">Each scan creates a new run. Backend coverage may be incomplete.</p>
+      </section>
+      <div class="workspace-grid">
+        <section class="history" aria-labelledby="history-title">
+          <div class="section-heading"><h2 id="history-title">Run history</h2><span id="run-total"></span></div>
+          <div id="history-loading" class="loading" hidden>Loading local evidence…</div>
+          <div id="runs" class="run-list"></div>
+          <nav class="pagination" aria-label="Run history pages"><button id="previous" class="quiet">Previous</button>
+            <span id="page-label"></span><button id="next" class="quiet">Next</button></nav>
+        </section>
+        <section class="evidence" aria-labelledby="evidence-title">
+          <div class="section-heading"><h2 id="evidence-title">Run details</h2><span id="run-status"></span></div>
+          <p id="detail-empty" class="empty">Select a run to inspect findings, coverage, and source information.</p>
+          <div id="detail" hidden>
+            <h3 id="run-title"></h3><p id="run-id" class="mono"></p>
+            <dl id="metadata" class="metadata"></dl>
+            <div id="warnings" class="warning" hidden></div>
+            <div class="exports" aria-label="Export this run"><span>Export evidence</span>
+              <button class="quiet export" data-format="json">JSON</button>
+              <button class="quiet export" data-format="md">Markdown</button>
+              <button class="quiet export" data-format="html">HTML</button>
+              <button id="delete" class="danger">Delete run</button>
+            </div>
+            <div class="finding-toolbar"><div><label for="search">Search findings</label>
+                <input id="search" type="search" placeholder="Package, vulnerability, or location"></div>
+              <div><label for="severity">Severity</label><select id="severity"><option value="">All severities</option>
+                <option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option>UNKNOWN</option></select></div>
+            </div>
+            <p id="finding-count" role="status" aria-live="polite"></p>
+            <div class="table-wrap"><table><caption class="sr-only">Findings in the selected run</caption>
+              <thead><tr><th scope="col">Priority / severity</th><th scope="col">Vulnerability</th>
+                <th scope="col">Package</th><th scope="col">Installed → fixed</th></tr></thead>
+              <tbody id="findings"></tbody></table></div>
+            <nav class="pagination" aria-label="Finding pages"><button id="finding-previous" class="quiet">Previous</button>
+              <span id="finding-page"></span><button id="finding-next" class="quiet">Next</button></nav>
+            <section class="comparison" aria-labelledby="comparison-title"><h3 id="comparison-title">Compare evidence</h3>
+              <label for="before">Earlier run on this history page</label><select id="before"></select>
+              <button id="compare" class="quiet">Compare with selected run</button>
+              <div id="comparison-output" aria-live="polite"></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+    <footer>Zero findings do not establish security. Review coverage, database age, and run warnings.</footer>
+  </main>
+  <dialog id="finding-dialog" aria-labelledby="finding-title"><div class="section-heading">
+    <h2 id="finding-title"></h2><button id="close-dialog" class="quiet">Close</button></div>
+    <dl id="finding-detail" class="metadata"></dl><p id="finding-description"></p>
+    <div id="finding-references"></div>
+  </dialog>
+</body>
+</html>
