@@ -82,6 +82,7 @@ class Run:
     data_updated_at: str | None = None
     source_digest: str = ""
     backend_version: str = ""
+    enrichment: list[dict] = field(default_factory=list)
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     started_at: str = field(default_factory=utc_now)
     completed_at: str = field(default_factory=utc_now)
@@ -104,6 +105,14 @@ class Run:
                 text(value, name, 4096)
         if self.data_updated_at is not None:
             text(self.data_updated_at, "data_updated_at", 128)
+        if not isinstance(self.enrichment, list) or len(self.enrichment) > 16:
+            raise ValueError("Invalid feed provenance")
+        for record in self.enrichment:
+            if not isinstance(record, dict) or set(record) - {"source", "source_date", "sha256",
+                    "imported_at", "derived_from"}:
+                raise ValueError("Invalid feed provenance record")
+            for value in record.values():
+                text(value, "feed provenance", 4096)
 
     def to_dict(self) -> dict:
         value = asdict(self)

@@ -1,0 +1,12 @@
+# Copy to config.yaml and configure only local targets you own/are authorized to scan.
+state_dir: ./.vulntrail
+cache_dir: ./.vulntrail/cache
+trivy_path: trivy
+offline: true
+timeout_seconds: 300
+max_report_bytes: 26214400
+max_findings: 20000
+interval_seconds: 3600
+max_data_age_days: 7
+targets:
+  project: ./your-project
