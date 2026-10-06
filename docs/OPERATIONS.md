@@ -36,7 +36,8 @@ directories are not excluded from backend scans and must not be mistaken for iso
 
 The Dockerfile packages only VulnTrail, not Trivy or vulnerability data. Build it
 yourself, mount a verified Linux-compatible engine, compatible database, local
-project, and private writable state. Mount project/cache read-only for normal scans.
+project, and private writable state. Mount the project read-only for normal scans.
+Use a private cache; read-only cache compatibility depends on the backend.
 Use `--network none`, `--cap-drop ALL`, `--security-opt no-new-privileges`, and a
 non-root UID matching mounted directory permissions. Never mount the Docker socket.
 
@@ -58,3 +59,4 @@ Ensure the binary is compatible with the image's Linux architecture and libc.
 The dashboard inside this image is not exposed: loopback-only peer checks deliberately
 reject ordinary container port forwarding. Use the dashboard natively. Docker runtime
 behavior must be verified on your host; local development lacked a Docker runtime.
+The base image tag is not digest-pinned; no bit-for-bit image reproducibility is claimed.

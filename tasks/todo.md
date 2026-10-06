@@ -9,4 +9,4 @@
 - [x] Feeds/response: bounded provenance-aware KEV/EPSS, safe recommendation/hold/restore tests.
 - [x] Distribution: lockfile, package/Docker/CI/community docs, clean install. Docker runtime remains unverified, as documented.
 - [x] Review: independent security/correctness findings fixed; complete tests/lint/audit.
-- [ ] Publication: two public repos, push exact commits, verify remote content and CI.
+- [x] Publication: two public repos pushed; remote contents verified. Cross-platform CI passed; final changes are rechecked on GitHub.

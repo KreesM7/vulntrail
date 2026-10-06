@@ -149,11 +149,13 @@ def _doctor(settings):
     targets = [{"name": name, "exists": path.is_dir()} for name, path in settings.targets.items()]
     cache_exists = settings.cache_dir.is_dir()
     metadata = settings.cache_dir / "db" / "metadata.json"
+    database = settings.cache_dir / "db" / "trivy.db"
     checks = {
         "backend_available": bool(binary),
         "configured_targets": targets,
         "cache_exists": cache_exists,
         "database_metadata_exists": metadata.is_file(),
+        "database_file_exists": database.is_file(),
         "offline": settings.offline,
         "notes": [
             "Provision Trivy and its vulnerability database separately.",
@@ -167,7 +169,7 @@ def _doctor(settings):
         if binary
         and targets
         and all(t["exists"] for t in targets)
-        and (not settings.offline or metadata.is_file())
+        and (not settings.offline or (metadata.is_file() and database.is_file()))
         else 2
     )
 

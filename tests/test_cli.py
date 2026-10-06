@@ -41,6 +41,19 @@ class CliTests(unittest.TestCase):
         self.assertIn("exists", error)
         self.assertEqual(self.config.read_bytes(), original)
 
+    def test_doctor_requires_both_offline_database_files(self):
+        database = self.root / ".vulntrail/cache/db"
+        database.mkdir(parents=True)
+        (database / "metadata.json").write_text("{}")
+        with patch("vulntrail.cli.shutil.which", return_value="trusted-trivy"):
+            code, output, _ = self.call(*self.args, "doctor")
+            self.assertEqual(code, 2)
+            self.assertFalse(json.loads(output)["database_file_exists"])
+            (database / "trivy.db").write_bytes(b"synthetic-presence-check-only")
+            code, output, _ = self.call(*self.args, "doctor")
+            self.assertEqual(code, 0)
+            self.assertTrue(json.loads(output)["database_file_exists"])
+
     def test_import_list_detail_report_diff_are_persisted(self):
         report = self.root / "report.json"
         report.write_text(

@@ -2,7 +2,7 @@
 
 ## Observed locally
 
-- Windows AMD64, Python 3.12.14: 76 unit/integration/headless tests pass, covering
+- Windows AMD64, Python 3.12.14: 77 unit/integration/headless tests pass, covering
   models, configuration, adapters, store, reports, feeds, response, scanner, history,
   API, CLI, and Textual UI. Windows loopback/file-handle tests required normal host
   execution because the development sandbox blocked socketpair/rename operations.
